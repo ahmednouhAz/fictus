@@ -17,17 +17,18 @@ const generators = [
 export default function DashboardPage() {
   const router = useRouter();
   const projects = useProjectStore((s) => s.projects);
-  const createProject = useProjectStore((s) => s.createProject);
 
   const recent = [...projects]
     .sort((a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt))
     .slice(0, 4);
   const favorites = projects.filter((p) => p.favorite).slice(0, 4);
 
-  function handleCreate(enabled: boolean) {
+  // Same destination as Sidebar's Generators > Instagram — the dashboard
+  // tile is just another entry point into the same category picker, not
+  // a shortcut that skips it.
+  function handleCreate(id: string, enabled: boolean) {
     if (!enabled) return;
-    const project = createProject("instagram");
-    router.push(`/projects/${project.id}`);
+    router.push(`/generators/${id}`);
   }
 
   return (
@@ -48,7 +49,7 @@ export default function DashboardPage() {
             {generators.map((g) => (
               <button
                 key={g.id}
-                onClick={() => handleCreate(g.enabled)}
+                onClick={() => handleCreate(g.id, g.enabled)}
                 disabled={!g.enabled}
                 className={cn(
                   "flex flex-col items-start gap-3 rounded-lg border border-border bg-surface/60 p-4 text-left transition-colors",
