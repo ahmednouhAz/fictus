@@ -353,7 +353,7 @@ export function InstagramPreview({
               relationship={profileCard?.relationship}
               followedSinceYear={profileCard?.followedSinceYear}
               note={profileCard?.note}
-              showViewProfileButton
+              showViewProfileButton={profileCard?.showViewProfileButton}
               theme={theme}
             />
             {timelineContent}

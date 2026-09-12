@@ -221,6 +221,11 @@ export const useProjectStore = create<ProjectState>()(
           // the view-profile button) since there's no shared history yet.
           profileCardEnabled: isMessageRequest ? true : undefined,
           profileCardShowViewProfileButton: isMessageRequest ? true : undefined,
+          // Sensible starting content for whenever the profile card gets
+          // turned on — "follow each other" is the most common real case,
+          // and a filled-in note reads better than a blank field.
+          profileCardRelationship: "mutual",
+          profileCardNote: "You both follow fictus and 2 others",
           device: "ios",
           statusBarVisible: true,
           statusBarHour: 9,
