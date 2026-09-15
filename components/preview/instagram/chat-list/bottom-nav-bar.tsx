@@ -1,4 +1,4 @@
-import { Home, Clapperboard, Search } from "lucide-react";
+import { Clapperboard, Search } from "lucide-react";
 import { InstagramAvatar } from "@/components/preview/instagram/instagram-avatar";
 import { cn } from "@/lib/utils";
 
@@ -39,10 +39,12 @@ export function BottomNavBar({
       }}
     >
       <div className="relative flex flex-1 items-center justify-center">
-        <Home
-          className={isLight ? "text-black" : "text-white"}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/icons/home.svg"
+          alt="Home"
           style={{ width: ICON_SIZE, height: ICON_SIZE }}
-          strokeWidth={1.75}
+          className={cn("relative", isLight && "invert")}
         />
       </div>
       <div className="relative flex flex-1 items-center justify-center">
