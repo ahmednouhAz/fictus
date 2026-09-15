@@ -2,8 +2,12 @@
 
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
+import { Show, SignInButton } from "@clerk/nextjs";
 import { GlassPanel } from "@/components/landing/glass-panel";
 import { EnterAppLink } from "@/components/shell/enter-app-link";
+import { PaddleCheckoutButton } from "@/components/landing/paddle-checkout-button";
+
+const PADDLE_PRO_PRICE_ID = process.env.NEXT_PUBLIC_PADDLE_PRO_PRICE_ID;
 
 const PLANS: {
   name: string;
@@ -11,6 +15,7 @@ const PLANS: {
   period?: string;
   points: string[];
   featured?: boolean;
+  paddlePriceId?: string;
 }[] = [
   {
     name: "Free",
@@ -23,6 +28,7 @@ const PLANS: {
     period: "/mo",
     points: ["Full editor", "Clean export", "Unlimited saves"],
     featured: true,
+    paddlePriceId: PADDLE_PRO_PRICE_ID,
   },
 ];
 
@@ -69,16 +75,39 @@ export function PricingSection() {
                     </li>
                   ))}
                 </ul>
-                <EnterAppLink
-                  href="/dashboard"
-                  className={`mt-8 flex items-center justify-center rounded-full py-2.5 text-[12px] font-normal tracking-[0.03em] transition-colors ${
-                    plan.featured
-                      ? "bg-white text-black hover:bg-white/90"
-                      : "border border-white/15 text-white/80 hover:bg-white/5"
-                  }`}
-                >
-                  Get started
-                </EnterAppLink>
+                {plan.paddlePriceId ? (
+                  <>
+                    <Show when="signed-out">
+                      <SignInButton mode="modal">
+                        <button
+                          type="button"
+                          className="mt-8 flex items-center justify-center rounded-full bg-white py-2.5 text-[12px] font-normal tracking-[0.03em] text-black transition-colors hover:bg-white/90"
+                        >
+                          Get started
+                        </button>
+                      </SignInButton>
+                    </Show>
+                    <Show when="signed-in">
+                      <PaddleCheckoutButton
+                        priceId={plan.paddlePriceId}
+                        className="mt-8 flex items-center justify-center rounded-full bg-white py-2.5 text-[12px] font-normal tracking-[0.03em] text-black transition-colors hover:bg-white/90"
+                      >
+                        Get started
+                      </PaddleCheckoutButton>
+                    </Show>
+                  </>
+                ) : (
+                  <EnterAppLink
+                    href="/dashboard"
+                    className={`mt-8 flex items-center justify-center rounded-full py-2.5 text-[12px] font-normal tracking-[0.03em] transition-colors ${
+                      plan.featured
+                        ? "bg-white text-black hover:bg-white/90"
+                        : "border border-white/15 text-white/80 hover:bg-white/5"
+                    }`}
+                  >
+                    Get started
+                  </EnterAppLink>
+                )}
               </GlassPanel>
             </motion.div>
           ))}
