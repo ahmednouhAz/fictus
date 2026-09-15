@@ -1,8 +1,10 @@
+import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CommandPalette } from "@/components/command-palette/command-palette";
 import { EnterAppOverlay } from "@/components/shell/enter-app-overlay";
+import { clerkAppearance } from "@/lib/clerk-appearance";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -29,11 +31,13 @@ export default function RootLayout({
       className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-bg text-foreground">
-        <TooltipProvider delayDuration={200}>
+        <ClerkProvider appearance={clerkAppearance}>
+          <TooltipProvider delayDuration={200}>
           {children}
           <CommandPalette />
           <EnterAppOverlay />
-        </TooltipProvider>
+          </TooltipProvider>
+        </ClerkProvider>
       </body>
     </html>
   );

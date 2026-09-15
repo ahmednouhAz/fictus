@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 import { GlassPanel } from "@/components/landing/glass-panel";
 import { EnterAppLink } from "@/components/shell/enter-app-link";
 
@@ -37,6 +38,19 @@ export function LandingNavbar() {
           >
             FAQ
           </a>
+          <Show when="signed-out">
+            <SignInButton mode="modal">
+              <button
+                type="button"
+                className="hidden rounded-full px-3.5 py-1.5 text-[12px] tracking-[0.02em] text-white/60 transition-colors hover:text-white sm:block"
+              >
+                Sign in
+              </button>
+            </SignInButton>
+          </Show>
+          <Show when="signed-in">
+            <UserButton />
+          </Show>
           <EnterAppLink
             href="/dashboard"
             className="group ml-2 flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-[12px] font-normal tracking-[0.02em] text-black transition-colors hover:bg-white/90"

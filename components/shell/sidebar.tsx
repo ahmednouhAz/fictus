@@ -4,7 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
-import { ChevronRight, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ChevronRight, CircleUser, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/stores/useUIStore";
 import { navSections, type NavItem } from "@/components/shell/sidebar-nav-data";
@@ -65,6 +66,37 @@ export function Sidebar() {
       </nav>
 
       <div className="border-t border-border p-2.5">
+        <div
+          className={cn(
+            "flex h-9 items-center gap-2.5 px-2.5",
+            collapsed && "justify-center px-0",
+          )}
+        >
+          <Show when="signed-in">
+            <UserButton />
+            {!collapsed && <span className="text-[13px] text-foreground-muted">Account</span>}
+          </Show>
+          <Show when="signed-out">
+            <SignInButton mode="modal">
+              <button
+                type="button"
+                className={cn(
+                  "flex h-9 items-center gap-2.5 rounded-md text-[13px] text-foreground-muted transition-colors hover:text-foreground",
+                  collapsed ? "w-9 justify-center" : "w-full px-0",
+                )}
+              >
+                {collapsed ? (
+                  <CircleUser className="h-4 w-4 shrink-0" />
+                ) : (
+                  <>
+                    <CircleUser className="h-4 w-4 shrink-0" />
+                    <span>Sign in</span>
+                  </>
+                )}
+              </button>
+            </SignInButton>
+          </Show>
+        </div>
         <button
           onClick={toggleSidebar}
           className={cn(
