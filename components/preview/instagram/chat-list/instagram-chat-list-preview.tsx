@@ -1,3 +1,6 @@
+"use client";
+
+import * as React from "react";
 import {
   SignalBars,
   WifiGlyph,
@@ -107,6 +110,33 @@ export function InstagramChatListPreview({
   // Collapses to zero when the status bar is hidden, rather than leaving a
   // blank gap where it used to be — same convention as instagram-preview.tsx.
   const topChromeHeight = statusBarVisible ? STATUS_BAR_HEIGHT : 0;
+
+  // Same custom-drawn scrollbar (native one hidden via no-scrollbar, a
+  // floating thumb tracks scroll progress) as instagram-preview.tsx's
+  // conversation view — reproduced here so the two match exactly.
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const trackRef = React.useRef<HTMLDivElement>(null);
+  const [thumb, setThumb] = React.useState({ top: 0, height: 0 });
+  const THUMB_HEIGHT = 91;
+
+  const updateThumb = React.useCallback(() => {
+    const scrollEl = scrollRef.current;
+    const trackEl = trackRef.current;
+    if (!scrollEl || !trackEl) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollEl;
+    if (scrollHeight <= clientHeight) {
+      setThumb({ top: 0, height: 0 });
+      return;
+    }
+    const maxTop = Math.max(0, trackEl.clientHeight - THUMB_HEIGHT);
+    const progress = scrollTop / (scrollHeight - clientHeight);
+    setThumb({ top: progress * maxTop, height: THUMB_HEIGHT });
+  }, [setThumb]);
+
+  React.useEffect(() => {
+    updateThumb();
+  }, [updateThumb, notes, chats]);
+
   return (
     <div
       className={cn(
@@ -115,7 +145,9 @@ export function InstagramChatListPreview({
       )}
     >
       <div
-        className="absolute inset-0 overflow-y-auto"
+        ref={scrollRef}
+        onScroll={updateThumb}
+        className="no-scrollbar absolute inset-0 overflow-y-auto"
         style={{
           paddingTop: topChromeHeight,
           paddingBottom: BOTTOM_RESERVED_HEIGHT,
@@ -134,6 +166,19 @@ export function InstagramChatListPreview({
           theme={theme}
           onSelectItem={onSelectItem}
         />
+      </div>
+
+      <div
+        ref={trackRef}
+        className="pointer-events-none absolute right-[6px]"
+        style={{ top: topChromeHeight, bottom: BOTTOM_RESERVED_HEIGHT - 8 }}
+      >
+        {thumb.height > 0 && (
+          <div
+            className="absolute right-0 w-[5px] rounded-full bg-white/25"
+            style={{ top: thumb.top, height: thumb.height }}
+          />
+        )}
       </div>
 
       {statusBarVisible && (
