@@ -319,7 +319,7 @@ export function InstagramMessageGroup({
                       </div>
                       {message.reaction && (
                         <span
-                          className={cn("absolute -bottom-[60px] flex items-center justify-center border-2 text-[11px] leading-none", isLight ? "bg-[#F5EEF3]" : "bg-[#1c1c1e]")}
+                          className={cn("absolute -bottom-[15px] flex items-center justify-center border-2 text-[11px] leading-none", isLight ? "bg-[#F5EEF3]" : "bg-[#1c1c1e]")}
                           style={{ left: 5, width: 29, height: 24, borderRadius: 11, borderColor: isLight ? "#FFFFFF" : "#0C1115" }}
                         >
                           {message.reaction}
