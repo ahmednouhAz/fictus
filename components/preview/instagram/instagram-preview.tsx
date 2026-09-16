@@ -340,46 +340,28 @@ export function InstagramPreview({
         className="no-scrollbar absolute inset-0 overflow-y-auto px-3"
         style={{ paddingTop: topChromeHeight, paddingBottom: bottomReservedHeight }}
       >
-        <div className="flex min-h-full flex-col justify-end">
-          {isMessageRequest ? (
-            <>
-              <InstagramProfileCard
-                recipientName={recipientName}
-                recipientNameHidden={recipientNameHidden}
-                recipientUsername={recipientUsername}
-                recipientAvatar={recipientAvatar}
-                recipientVerified={recipientVerified}
-                followers={profileCard?.followers}
-                posts={profileCard?.posts}
-                relationship={profileCard?.relationship}
-                followedSinceYear={profileCard?.followedSinceYear}
-                note={profileCard?.note}
-                showViewProfileButton={profileCard?.showViewProfileButton}
-                theme={theme}
-              />
-              {timelineContent}
-            </>
-          ) : (
-            <>
-              {profileCard?.enabled && (
-                <InstagramProfileCard
-                  recipientName={recipientName}
-                  recipientNameHidden={recipientNameHidden}
-                  recipientUsername={recipientUsername}
-                  recipientAvatar={recipientAvatar}
-                  recipientVerified={recipientVerified}
-                  followers={profileCard?.followers}
-                  posts={profileCard?.posts}
-                  relationship={profileCard?.relationship}
-                  followedSinceYear={profileCard?.followedSinceYear}
-                  note={profileCard?.note}
-                  showViewProfileButton={profileCard?.showViewProfileButton}
-                  theme={theme}
-                />
-              )}
-              {timelineContent}
-            </>
+        <div className="flex min-h-full flex-col">
+          {(isMessageRequest || profileCard?.enabled) && (
+            <InstagramProfileCard
+              recipientName={recipientName}
+              recipientNameHidden={recipientNameHidden}
+              recipientUsername={recipientUsername}
+              recipientAvatar={recipientAvatar}
+              recipientVerified={recipientVerified}
+              followers={profileCard?.followers}
+              posts={profileCard?.posts}
+              relationship={profileCard?.relationship}
+              followedSinceYear={profileCard?.followedSinceYear}
+              note={profileCard?.note}
+              showViewProfileButton={profileCard?.showViewProfileButton}
+              theme={theme}
+            />
           )}
+          {/* The profile card (if any) stays put right below the header —
+              only the messages anchor to the bottom, so any slack space
+              lands between the card and the first message rather than
+              pushing the card down with everything else. */}
+          <div className="flex flex-1 flex-col justify-end">{timelineContent}</div>
         </div>
       </div>
 
