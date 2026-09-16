@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useClerk } from "@clerk/nextjs";
 import { ArrowLeft, Star, Undo2, Redo2, Download } from "lucide-react";
 import { useProjectStore } from "@/stores/useProjectStore";
 import { useEditorStore } from "@/stores/useEditorStore";
@@ -14,6 +15,8 @@ import { GenericPreview } from "@/components/preview/generic-preview";
 import { InstagramPreview } from "@/components/preview/instagram/instagram-preview";
 import { IosFrame } from "@/components/preview/ios-frame";
 import { captureElementViaScreen } from "@/lib/screenshot";
+import { useExportQuota } from "@/components/paywall/export-quota-provider";
+import { UpgradeDialog } from "@/components/paywall/upgrade-dialog";
 import { cn } from "@/lib/utils";
 
 type LeftTab = "conversation" | "profile" | "display";
@@ -36,9 +39,21 @@ export function WorkspaceView({ projectId }: { projectId: string }) {
   const screenRef = React.useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = React.useState(false);
   const [flattenFrame, setFlattenFrame] = React.useState(false);
+  const clerk = useClerk();
+  const { isSignedIn, quota, consume } = useExportQuota();
+  const [upgradeOpen, setUpgradeOpen] = React.useState(false);
 
   async function handleExport() {
     if (!screenRef.current) return;
+    if (!isSignedIn) {
+      clerk.openSignIn();
+      return;
+    }
+    const result = await consume();
+    if (!result?.allowed) {
+      setUpgradeOpen(true);
+      return;
+    }
     setExporting(true);
     try {
       // Briefly drop the frame's rounded corners/bezel shadow — a screen
@@ -147,14 +162,21 @@ export function WorkspaceView({ projectId }: { projectId: string }) {
 
         <div className="ml-auto flex items-center gap-1">
           {(project.device ?? "ios") === "ios" && project.platform === "instagram" && (
-            <button
-              onClick={handleExport}
-              disabled={exporting}
-              className="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium text-foreground-muted transition-colors hover:glass-surface hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-            >
-              <Download className="h-4 w-4" />
-              {exporting ? "Exporting…" : "Export PNG"}
-            </button>
+            <>
+              {quota.plan === "free" && (
+                <span className="text-[12px] text-foreground-subtle">
+                  {quota.remaining} export{quota.remaining === 1 ? "" : "s"} left
+                </span>
+              )}
+              <button
+                onClick={handleExport}
+                disabled={exporting}
+                className="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium text-foreground-muted transition-colors hover:glass-surface hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+              >
+                <Download className="h-4 w-4" />
+                {exporting ? "Exporting…" : "Export PNG"}
+              </button>
+            </>
           )}
           <button
             onClick={undo}
@@ -293,6 +315,13 @@ export function WorkspaceView({ projectId }: { projectId: string }) {
           )}
         </section>
       </div>
+
+      <UpgradeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        title="You've used all 3 free exports"
+        description="Upgrade to Pro for unlimited exports, plus full access to Reels, Stories, and Voice messages."
+      />
     </div>
   );
 }

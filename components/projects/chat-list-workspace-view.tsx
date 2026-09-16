@@ -26,10 +26,14 @@ import {
   ChevronDown,
   Download,
   GripVertical,
+  Lock,
   Plus,
   Star,
   Trash2,
 } from "lucide-react";
+import { useClerk } from "@clerk/nextjs";
+import { useExportQuota } from "@/components/paywall/export-quota-provider";
+import { UpgradeDialog } from "@/components/paywall/upgrade-dialog";
 import { IosFrame } from "@/components/preview/ios-frame";
 import { InstagramChatListPreview } from "@/components/preview/instagram/chat-list/instagram-chat-list-preview";
 import { InstagramAvatar } from "@/components/preview/instagram/instagram-avatar";
@@ -438,6 +442,9 @@ export function ChatListWorkspaceView({ projectId }: { projectId: string }) {
   const screenRef = React.useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = React.useState(false);
   const [flattenFrame, setFlattenFrame] = React.useState(false);
+  const clerk = useClerk();
+  const { isSignedIn, quota, consume } = useExportQuota();
+  const [upgradeReason, setUpgradeReason] = React.useState<"export" | "playButton" | null>(null);
 
   // Clicking an item in the preview both selects it and highlights the
   // matching row in the editor (see SortableRow/the "Your note" block
@@ -467,6 +474,15 @@ export function ChatListWorkspaceView({ projectId }: { projectId: string }) {
   // rectangle and can't cleanly bound a rounded one.
   async function handleExport() {
     if (!screenRef.current) return;
+    if (!isSignedIn) {
+      clerk.openSignIn();
+      return;
+    }
+    const result = await consume();
+    if (!result?.allowed) {
+      setUpgradeReason("export");
+      return;
+    }
     setExporting(true);
     try {
       setFlattenFrame(true);
@@ -604,6 +620,11 @@ export function ChatListWorkspaceView({ projectId }: { projectId: string }) {
         </span>
 
         <div className="ml-auto flex items-center gap-1">
+          {quota.plan === "free" && (
+            <span className="text-[12px] text-foreground-subtle">
+              {quota.remaining} export{quota.remaining === 1 ? "" : "s"} left
+            </span>
+          )}
           <button
             onClick={handleExport}
             disabled={exporting}
@@ -894,15 +915,23 @@ export function ChatListWorkspaceView({ projectId }: { projectId: string }) {
                                   { value: "missedAudioCall", label: "Missed audio" },
                                   { value: "playButton", label: "Play button" },
                                 ] as { value: ChatPreviewKind; label: string }[]
-                              ).map((option) => (
-                                <TogglePill
-                                  key={option.value}
-                                  active={(chat.previewKind ?? "text") === option.value}
-                                  onClick={() => updateChat(chat.id, { previewKind: option.value })}
-                                >
-                                  {option.label}
-                                </TogglePill>
-                              ))}
+                              ).map((option) => {
+                                const isLocked = option.value === "playButton" && quota.locked;
+                                return (
+                                  <TogglePill
+                                    key={option.value}
+                                    active={(chat.previewKind ?? "text") === option.value}
+                                    onClick={() =>
+                                      isLocked
+                                        ? setUpgradeReason("playButton")
+                                        : updateChat(chat.id, { previewKind: option.value })
+                                    }
+                                  >
+                                    {isLocked && <Lock className="mr-1 inline h-3 w-3" />}
+                                    {option.label}
+                                  </TogglePill>
+                                );
+                              })}
                             </div>
                             <div className="flex gap-1.5">
                               {(chat.previewKind ?? "text") !== "missedVideoCall" &&
@@ -1102,6 +1131,21 @@ export function ChatListWorkspaceView({ projectId }: { projectId: string }) {
           </IosFrame>
         </section>
       </div>
+
+      <UpgradeDialog
+        open={upgradeReason !== null}
+        onOpenChange={(open) => !open && setUpgradeReason(null)}
+        title={
+          upgradeReason === "playButton"
+            ? "Play button is a Pro feature"
+            : "You've used all 3 free exports"
+        }
+        description={
+          upgradeReason === "playButton"
+            ? "Upgrade to Pro for unlimited exports, plus full access to the play-button preview and more."
+            : "Upgrade to Pro for unlimited exports, plus full access to Reels, Stories, and Voice messages."
+        }
+      />
     </div>
   );
 }

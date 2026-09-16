@@ -14,8 +14,11 @@ import {
   Check,
   X,
   Shuffle,
+  Lock,
 } from "lucide-react";
 import { useEditorStore } from "@/stores/useEditorStore";
+import { useExportQuota } from "@/components/paywall/export-quota-provider";
+import { UpgradeDialog } from "@/components/paywall/upgrade-dialog";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { DividerTimeRow } from "@/components/editor/divider-time-row";
 import { SystemPresetButtons } from "@/components/editor/system-message-presets";
@@ -57,6 +60,11 @@ export function InsertItemMenu({
   const insertStoryMessage = useEditorStore((s) => s.insertStoryMessage);
   const insertVoiceMessage = useEditorStore((s) => s.insertVoiceMessage);
   const insertPostMessage = useEditorStore((s) => s.insertPostMessage);
+
+  const { quota } = useExportQuota();
+  const [upgradeFeature, setUpgradeFeature] = React.useState<"reel" | "story" | "voice" | null>(
+    null,
+  );
 
   const [open, setOpen] = React.useState(false);
   const [step, setStep] = React.useState<Step>("menu");
@@ -279,27 +287,30 @@ export function InsertItemMenu({
               </button>
               <button
                 type="button"
-                onClick={() => setStep("reel")}
+                onClick={() => (quota.locked ? setUpgradeFeature("reel") : setStep("reel"))}
                 className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-foreground opacity-100 transition-opacity duration-150 hover:glass-surface group-hover/menu:opacity-50 hover:!opacity-100"
               >
                 <Clapperboard className="h-3.5 w-3.5 text-foreground-subtle" />
                 Add reel
+                {quota.locked && <Lock className="ml-auto h-3 w-3 text-foreground-subtle" />}
               </button>
               <button
                 type="button"
-                onClick={() => setStep("story")}
+                onClick={() => (quota.locked ? setUpgradeFeature("story") : setStep("story"))}
                 className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-foreground opacity-100 transition-opacity duration-150 hover:glass-surface group-hover/menu:opacity-50 hover:!opacity-100"
               >
                 <Circle className="h-3.5 w-3.5 text-foreground-subtle" />
                 Add story
+                {quota.locked && <Lock className="ml-auto h-3 w-3 text-foreground-subtle" />}
               </button>
               <button
                 type="button"
-                onClick={() => setStep("voice")}
+                onClick={() => (quota.locked ? setUpgradeFeature("voice") : setStep("voice"))}
                 className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-foreground opacity-100 transition-opacity duration-150 hover:glass-surface group-hover/menu:opacity-50 hover:!opacity-100"
               >
                 <Mic className="h-3.5 w-3.5 text-foreground-subtle" />
                 Add voice note
+                {quota.locked && <Lock className="ml-auto h-3 w-3 text-foreground-subtle" />}
               </button>
               <button
                 type="button"
@@ -509,6 +520,19 @@ export function InsertItemMenu({
           )}
         </PopoverContent>
       </Popover>
+
+      <UpgradeDialog
+        open={upgradeFeature !== null}
+        onOpenChange={(open) => !open && setUpgradeFeature(null)}
+        title={`${upgradeFeature ? FEATURE_LABELS[upgradeFeature] : ""} is a Pro feature`}
+        description="Upgrade to Pro for unlimited exports, plus full access to Reels, Stories, and Voice messages."
+      />
     </div>
   );
 }
+
+const FEATURE_LABELS: Record<"reel" | "story" | "voice", string> = {
+  reel: "Reels",
+  story: "Stories",
+  voice: "Voice messages",
+};

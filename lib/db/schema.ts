@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, integer, timestamp } from "drizzle-orm/pg-core";
 
 // Keyed by Clerk user id rather than a local users table — Clerk is the
 // sole identity provider in this app, so mirroring a full users table here
@@ -17,6 +17,17 @@ export const subscriptions = pgTable("subscriptions", {
   // not a price id.
   productId: text("product_id"),
   currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Separate from `subscriptions` — a free user who's never touched Polar
+// checkout has no subscriptions row at all, but usage tracking needs a
+// row that exists independent of billing state.
+export const exportUsage = pgTable("export_usage", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clerkUserId: text("clerk_user_id").notNull().unique(),
+  exportsUsed: integer("exports_used").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
