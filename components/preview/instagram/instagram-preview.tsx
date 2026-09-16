@@ -263,12 +263,12 @@ export function InstagramPreview({
     updateMeBubbleColors();
   }, [updateThumb, updateMeBubbleColors, items]);
 
-  // Message requests are bottom-anchored (see the wrapper around
+  // Every conversation is bottom-anchored (see the wrapper around
   // timelineContent below) — the scroll position has to actually start
-  // there too, otherwise the default scrollTop of 0 just shows the
-  // profile card with the messages scrolled out of view below it.
+  // there too whenever content overflows the screen, otherwise the
+  // default scrollTop of 0 just shows the oldest messages (or the profile
+  // card, for message requests) instead of the latest ones near the box.
   React.useEffect(() => {
-    if (!isMessageRequest) return;
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
@@ -340,27 +340,9 @@ export function InstagramPreview({
         className="no-scrollbar absolute inset-0 overflow-y-auto px-3"
         style={{ paddingTop: topChromeHeight, paddingBottom: bottomReservedHeight }}
       >
-        {isMessageRequest ? (
-          <>
-            <InstagramProfileCard
-              recipientName={recipientName}
-              recipientNameHidden={recipientNameHidden}
-              recipientUsername={recipientUsername}
-              recipientAvatar={recipientAvatar}
-              recipientVerified={recipientVerified}
-              followers={profileCard?.followers}
-              posts={profileCard?.posts}
-              relationship={profileCard?.relationship}
-              followedSinceYear={profileCard?.followedSinceYear}
-              note={profileCard?.note}
-              showViewProfileButton={profileCard?.showViewProfileButton}
-              theme={theme}
-            />
-            {timelineContent}
-          </>
-        ) : (
-          <>
-            {profileCard?.enabled && (
+        <div className="flex min-h-full flex-col justify-end">
+          {isMessageRequest ? (
+            <>
               <InstagramProfileCard
                 recipientName={recipientName}
                 recipientNameHidden={recipientNameHidden}
@@ -375,10 +357,30 @@ export function InstagramPreview({
                 showViewProfileButton={profileCard?.showViewProfileButton}
                 theme={theme}
               />
-            )}
-            {timelineContent}
-          </>
-        )}
+              {timelineContent}
+            </>
+          ) : (
+            <>
+              {profileCard?.enabled && (
+                <InstagramProfileCard
+                  recipientName={recipientName}
+                  recipientNameHidden={recipientNameHidden}
+                  recipientUsername={recipientUsername}
+                  recipientAvatar={recipientAvatar}
+                  recipientVerified={recipientVerified}
+                  followers={profileCard?.followers}
+                  posts={profileCard?.posts}
+                  relationship={profileCard?.relationship}
+                  followedSinceYear={profileCard?.followedSinceYear}
+                  note={profileCard?.note}
+                  showViewProfileButton={profileCard?.showViewProfileButton}
+                  theme={theme}
+                />
+              )}
+              {timelineContent}
+            </>
+          )}
+        </div>
       </div>
 
       <div
