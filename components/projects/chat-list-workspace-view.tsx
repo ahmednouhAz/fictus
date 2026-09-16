@@ -475,11 +475,16 @@ export function ChatListWorkspaceView({ projectId }: { projectId: string }) {
   async function handleExport() {
     if (!screenRef.current) return;
     if (!isSignedIn) {
-      clerk.openSignIn();
+      // Keep the user on this page after sign-in instead of falling back
+      // to NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL (the landing
+      // page) — forceRedirectUrl takes precedence over that env default.
+      clerk.openSignIn({ forceRedirectUrl: window.location.href });
       return;
     }
-    const result = await consume();
-    if (!result?.allowed) {
+    // Checked against the already-known client-side quota, not a fresh
+    // server round-trip — avoids prompting the screen-share picker at all
+    // for someone who's already locked out.
+    if (quota.locked) {
       setUpgradeReason("export");
       return;
     }
@@ -493,6 +498,10 @@ export function ChatListWorkspaceView({ projectId }: { projectId: string }) {
       link.download = `${project?.name || "chat-list"}.png`;
       link.href = dataUrl;
       link.click();
+      // Only spend a credit once the capture actually succeeded — a
+      // cancelled/denied screen-share picker (getDisplayMedia) used to
+      // burn a credit for nothing.
+      void consume();
     } catch (error) {
       console.error("Export failed", error);
     } finally {
