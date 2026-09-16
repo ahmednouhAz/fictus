@@ -126,6 +126,7 @@ function ChatRow({
         avatarUrl={chat.avatar}
         size={AVATAR_SIZE}
         story={chat.story}
+        theme={isLight ? "light" : "dark"}
       />
       <div style={{ width: AVATAR_GAP }} />
       <div className="flex min-w-0 flex-1 flex-col">

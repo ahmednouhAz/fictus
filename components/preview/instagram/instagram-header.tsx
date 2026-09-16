@@ -103,6 +103,7 @@ export function InstagramHeader({
           avatarUrl={recipientAvatar}
           size={32}
           story={recipientStory}
+          theme={theme}
         />
       </div>
 

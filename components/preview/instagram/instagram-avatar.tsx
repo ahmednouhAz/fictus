@@ -1,3 +1,5 @@
+import { cn } from "@/lib/utils";
+
 // Story ring's own thickness, and the gap between the ring and the photo
 // itself — both fixed px regardless of avatar size, matching Instagram's
 // own proportions closely enough at the sizes this app actually uses it at.
@@ -9,6 +11,7 @@ export function InstagramAvatar({
   avatarUrl,
   size = 32,
   story = "none",
+  theme = "dark",
 }: {
   name: string;
   avatarUrl?: string;
@@ -17,9 +20,15 @@ export function InstagramAvatar({
   // when there's a story not yet watched, a plain gray ring once it's been
   // watched, no ring at all when there's no story.
   story?: "none" | "unseen" | "seen";
+  // The gap between the ring and the photo matches the screen background
+  // it sits on, not a fixed color — black in dark mode, white in light.
+  // Defaults to dark since most callers (editor chrome, landing mockups)
+  // have no light/dark toggle at all.
+  theme?: "dark" | "light";
 }) {
   const initial = name.trim().charAt(0).toUpperCase() || "?";
   const hasRing = story !== "none";
+  const isLight = theme === "light";
 
   // Three concentric, explicitly-sized layers (not padding + a box-shadow
   // ring) so the ring is genuinely centered and a consistent width all the
@@ -44,7 +53,7 @@ export function InstagramAvatar({
       }}
     >
       <div
-        className="flex items-center justify-center rounded-full bg-black"
+        className={cn("flex items-center justify-center rounded-full", isLight ? "bg-white" : "bg-black")}
         style={{ width: gapSize, height: gapSize }}
       >
         <div

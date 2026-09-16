@@ -237,6 +237,7 @@ function NoteItem({
             avatarUrl={note.avatar}
             size={AVATAR_SIZE}
             story={note.story}
+            theme={isLight ? "light" : "dark"}
           />
         </div>
       </div>
