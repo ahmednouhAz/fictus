@@ -46,9 +46,11 @@ async function upsertFromSubscription(subscription: PolarSubscriptionLike) {
 // empty string) rather than through lib/env.ts's throwing validator —
 // Webhooks() runs at module scope to build the exported POST handler, so
 // a missing secret should make every signature check fail (clean 4xx),
-// not crash the route on import.
+// not crash the route on import. .trim() guards against a stray trailing
+// newline/space from pasting into Vercel's env var UI — a single extra
+// byte there makes every signature check fail with no visible clue why.
 export const POST = Webhooks({
-  webhookSecret: process.env.POLAR_WEBHOOK_SECRET ?? "",
+  webhookSecret: (process.env.POLAR_WEBHOOK_SECRET ?? "").trim(),
   onSubscriptionCreated: (payload) => upsertFromSubscription(payload.data),
   onSubscriptionUpdated: (payload) => upsertFromSubscription(payload.data),
   onSubscriptionActive: (payload) => upsertFromSubscription(payload.data),
