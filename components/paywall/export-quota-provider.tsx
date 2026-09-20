@@ -38,10 +38,17 @@ export function ExportQuotaProvider({ children }: { children: React.ReactNode })
     if (!isLoaded || !isSignedIn) return;
     let cancelled = false;
     fetch("/api/export-quota")
-      .then((res) => (res.ok ? res.json() : null))
+      .then(async (res) => {
+        if (!res.ok) {
+          console.error("Failed to fetch export quota", res.status, await res.text());
+          return null;
+        }
+        return res.json();
+      })
       .then((data: ExportQuota | null) => {
         if (!cancelled && data) setServerQuota(data);
-      });
+      })
+      .catch((error) => console.error("Failed to fetch export quota", error));
     return () => {
       cancelled = true;
     };
@@ -52,11 +59,19 @@ export function ExportQuotaProvider({ children }: { children: React.ReactNode })
 
   const consume = React.useCallback(async () => {
     if (!isSignedIn) return null;
-    const res = await fetch("/api/export-quota", { method: "POST" });
-    if (!res.ok) return null;
-    const data: ExportQuota & { allowed: boolean } = await res.json();
-    setServerQuota(data);
-    return data;
+    try {
+      const res = await fetch("/api/export-quota", { method: "POST" });
+      if (!res.ok) {
+        console.error("Failed to record export usage", res.status, await res.text());
+        return null;
+      }
+      const data: ExportQuota & { allowed: boolean } = await res.json();
+      setServerQuota(data);
+      return data;
+    } catch (error) {
+      console.error("Failed to record export usage", error);
+      return null;
+    }
   }, [isSignedIn]);
 
   const value = React.useMemo(

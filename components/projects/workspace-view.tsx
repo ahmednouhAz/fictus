@@ -49,7 +49,12 @@ export function WorkspaceView({ projectId }: { projectId: string }) {
       // Keep the user on this page after sign-in instead of falling back
       // to NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL (the landing
       // page) — forceRedirectUrl takes precedence over that env default.
-      clerk.openSignIn({ forceRedirectUrl: window.location.href });
+      // signUpForceRedirectUrl covers the same case when someone clicks
+      // "Sign up" from inside the sign-in modal instead.
+      clerk.openSignIn({
+        forceRedirectUrl: window.location.href,
+        signUpForceRedirectUrl: window.location.href,
+      });
       return;
     }
     // Checked against the already-known client-side quota, not a fresh
