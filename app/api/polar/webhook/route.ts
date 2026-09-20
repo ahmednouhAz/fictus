@@ -1,38 +1,47 @@
-import { Webhooks } from "@polar-sh/nextjs";
+import { Webhook, WebhookVerificationError } from "standardwebhooks";
 import { db } from "@/lib/db/client";
 import { subscriptions } from "@/lib/db/schema";
 
-// A local structural type instead of importing Polar SDK's own
-// `Subscription` type — @polar-sh/nextjs pins its own internal copy of
-// @polar-sh/sdk, separate from the one installed directly here, so the
-// two `Subscription` types are nominally different even though every
-// payload satisfies this shape. Only the fields actually used are named.
-interface PolarSubscriptionLike {
-  id: string;
-  customerId: string;
-  status: string;
-  productId: string;
-  currentPeriodEnd: Date;
-  customer: { externalId?: string | null };
+// Raw wire-format shape (snake_case, as Polar actually sends it) — we
+// verify with standardwebhooks directly rather than @polar-sh/sdk's
+// validateEvent(), so there's no Zod schema parsing/camelCase transform
+// step doing this for us anymore. Only the fields actually used are named.
+interface PolarWebhookEvent {
+  type: string;
+  data: {
+    id: string;
+    status: string;
+    customer_id: string;
+    product_id: string;
+    current_period_end: string;
+    customer?: { external_id?: string | null };
+  };
 }
+
+const SUBSCRIPTION_EVENT_TYPES = new Set([
+  "subscription.created",
+  "subscription.updated",
+  "subscription.active",
+  "subscription.canceled",
+  "subscription.revoked",
+]);
 
 // One shared handler for every subscription event — Polar's `status`
 // field is authoritative on each payload, so there's no need to special-
-// case behavior per event name (unlike Paddle, where "canceled" needed
-// its own branch). customerExternalId at checkout time becomes
-// `data.customer.externalId` here, which is how this gets tied back to a
-// Clerk user without a separate mapping table.
-async function upsertFromSubscription(subscription: PolarSubscriptionLike) {
-  const clerkUserId = subscription.customer.externalId;
+// case behavior per event name. customerExternalId at checkout time
+// becomes `data.customer.external_id` here, which is how this gets tied
+// back to a Clerk user without a separate mapping table.
+async function upsertFromSubscription(data: PolarWebhookEvent["data"]) {
+  const clerkUserId = data.customer?.external_id;
   if (!clerkUserId) return;
 
   const values = {
     clerkUserId,
-    polarCustomerId: subscription.customerId,
-    polarSubscriptionId: subscription.id,
-    status: subscription.status,
-    productId: subscription.productId,
-    currentPeriodEnd: subscription.currentPeriodEnd,
+    polarCustomerId: data.customer_id,
+    polarSubscriptionId: data.id,
+    status: data.status,
+    productId: data.product_id,
+    currentPeriodEnd: new Date(data.current_period_end),
     updatedAt: new Date(),
   };
 
@@ -42,18 +51,44 @@ async function upsertFromSubscription(subscription: PolarSubscriptionLike) {
     .onConflictDoUpdate({ target: subscriptions.clerkUserId, set: values });
 }
 
-// Reads process.env.POLAR_WEBHOOK_SECRET directly (falling back to an
-// empty string) rather than through lib/env.ts's throwing validator —
-// Webhooks() runs at module scope to build the exported POST handler, so
-// a missing secret should make every signature check fail (clean 4xx),
-// not crash the route on import. .trim() guards against a stray trailing
-// newline/space from pasting into Vercel's env var UI — a single extra
-// byte there makes every signature check fail with no visible clue why.
-export const POST = Webhooks({
-  webhookSecret: (process.env.POLAR_WEBHOOK_SECRET ?? "").trim(),
-  onSubscriptionCreated: (payload) => upsertFromSubscription(payload.data),
-  onSubscriptionUpdated: (payload) => upsertFromSubscription(payload.data),
-  onSubscriptionActive: (payload) => upsertFromSubscription(payload.data),
-  onSubscriptionCanceled: (payload) => upsertFromSubscription(payload.data),
-  onSubscriptionRevoked: (payload) => upsertFromSubscription(payload.data),
-});
+// Verifies with `standardwebhooks` directly instead of @polar-sh/sdk's
+// validateEvent() — confirmed by direct testing that validateEvent()
+// mishandles the "whsec_"-prefixed secret format Polar's own dashboard
+// gives you (it re-encodes the whole prefixed string as if it were plain
+// text instead of stripping the prefix and base64-decoding the
+// remainder), so it can never verify a real signature from Polar's
+// server no matter how correct the secret value is. The underlying
+// standardwebhooks library (which Polar's SDK itself depends on)
+// handles the "whsec_" format correctly out of the box.
+export async function POST(request: Request) {
+  const rawBody = await request.text();
+  const headers = {
+    "webhook-id": request.headers.get("webhook-id") ?? "",
+    "webhook-timestamp": request.headers.get("webhook-timestamp") ?? "",
+    "webhook-signature": request.headers.get("webhook-signature") ?? "",
+  };
+  const secret = (process.env.POLAR_WEBHOOK_SECRET ?? "").trim();
+
+  let event: PolarWebhookEvent;
+  try {
+    event = new Webhook(secret).verify(rawBody, headers) as PolarWebhookEvent;
+  } catch (error) {
+    if (error instanceof WebhookVerificationError) {
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      const headerTimestamp = Number(headers["webhook-timestamp"]);
+      console.error("Polar webhook verification failed", {
+        reason: error.message,
+        webhookId: headers["webhook-id"],
+        ageSeconds: Number.isFinite(headerTimestamp) ? nowSeconds - headerTimestamp : null,
+      });
+      return Response.json({ received: false }, { status: 403 });
+    }
+    throw error;
+  }
+
+  if (SUBSCRIPTION_EVENT_TYPES.has(event.type)) {
+    await upsertFromSubscription(event.data);
+  }
+
+  return Response.json({ received: true });
+}
