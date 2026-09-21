@@ -13,7 +13,19 @@ const ANONYMOUS_QUOTA: ExportQuota = {
   exportsUsed: 0,
   remaining: FREE_EXPORT_LIMIT,
   locked: false,
+  status: null,
+  currentPeriodEnd: null,
 };
+
+// JSON has no Date type — currentPeriodEnd arrives from the API as an ISO
+// string, not the Date the ExportQuota type claims. Parse it back so the
+// type stays honest for consumers (e.g. the account page formatting it).
+function parseQuota(data: ExportQuota): ExportQuota {
+  return {
+    ...data,
+    currentPeriodEnd: data.currentPeriodEnd ? new Date(data.currentPeriodEnd) : null,
+  };
+}
 
 type ExportQuotaContextValue = {
   quota: ExportQuota;
@@ -46,7 +58,7 @@ export function ExportQuotaProvider({ children }: { children: React.ReactNode })
         return res.json();
       })
       .then((data: ExportQuota | null) => {
-        if (!cancelled && data) setServerQuota(data);
+        if (!cancelled && data) setServerQuota(parseQuota(data));
       })
       .catch((error) => console.error("Failed to fetch export quota", error));
     return () => {
@@ -65,7 +77,8 @@ export function ExportQuotaProvider({ children }: { children: React.ReactNode })
         console.error("Failed to record export usage", res.status, await res.text());
         return null;
       }
-      const data: ExportQuota & { allowed: boolean } = await res.json();
+      const raw: ExportQuota & { allowed: boolean } = await res.json();
+      const data = { ...parseQuota(raw), allowed: raw.allowed };
       setServerQuota(data);
       return data;
     } catch (error) {

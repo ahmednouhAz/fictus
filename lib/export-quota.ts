@@ -10,14 +10,20 @@ export type ExportQuota = {
   exportsUsed: number;
   remaining: number | null; // null = unlimited (pro)
   locked: boolean;
+  // Raw Polar subscription status (e.g. "past_due") and renewal date —
+  // "pro" already covers past_due (see lib/subscription.ts), so the UI
+  // needs the raw status to show a payment-failed warning on top of that,
+  // and the renewal date for the account page's "Manage subscription" view.
+  status: string | null;
+  currentPeriodEnd: Date | null;
 };
 
 // Read-only — used to display "N exports left" and to decide whether
 // Reels/Stories/Voice/the play-button toggle are locked. Never writes.
 export async function getExportQuota(clerkUserId: string): Promise<ExportQuota> {
-  const { plan } = await getUserSubscription(clerkUserId);
+  const { plan, status, currentPeriodEnd } = await getUserSubscription(clerkUserId);
   if (plan === "pro") {
-    return { plan: "pro", exportsUsed: 0, remaining: null, locked: false };
+    return { plan: "pro", exportsUsed: 0, remaining: null, locked: false, status, currentPeriodEnd };
   }
 
   const [row] = await db
@@ -32,6 +38,8 @@ export async function getExportQuota(clerkUserId: string): Promise<ExportQuota> 
     exportsUsed,
     remaining: Math.max(0, FREE_EXPORT_LIMIT - exportsUsed),
     locked: exportsUsed >= FREE_EXPORT_LIMIT,
+    status,
+    currentPeriodEnd,
   };
 }
 
@@ -44,9 +52,17 @@ export async function getExportQuota(clerkUserId: string): Promise<ExportQuota> 
 export async function consumeExport(
   clerkUserId: string,
 ): Promise<ExportQuota & { allowed: boolean }> {
-  const { plan } = await getUserSubscription(clerkUserId);
+  const { plan, status, currentPeriodEnd } = await getUserSubscription(clerkUserId);
   if (plan === "pro") {
-    return { plan: "pro", exportsUsed: 0, remaining: null, locked: false, allowed: true };
+    return {
+      plan: "pro",
+      exportsUsed: 0,
+      remaining: null,
+      locked: false,
+      status,
+      currentPeriodEnd,
+      allowed: true,
+    };
   }
 
   const [row] = await db
@@ -66,6 +82,8 @@ export async function consumeExport(
       exportsUsed: FREE_EXPORT_LIMIT,
       remaining: 0,
       locked: true,
+      status,
+      currentPeriodEnd,
       allowed: false,
     };
   }
@@ -75,6 +93,8 @@ export async function consumeExport(
     exportsUsed: row.exportsUsed,
     remaining: Math.max(0, FREE_EXPORT_LIMIT - row.exportsUsed),
     locked: row.exportsUsed >= FREE_EXPORT_LIMIT,
+    status,
+    currentPeriodEnd,
     allowed: true,
   };
 }

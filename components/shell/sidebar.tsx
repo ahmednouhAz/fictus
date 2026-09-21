@@ -8,6 +8,8 @@ import { ChevronRight, CircleUser, PanelLeftClose, PanelLeftOpen } from "lucide-
 import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/stores/useUIStore";
+import { useExportQuota } from "@/components/paywall/export-quota-provider";
+import type { ExportQuota } from "@/lib/export-quota";
 import { navSections, type NavItem } from "@/components/shell/sidebar-nav-data";
 import {
   Tooltip,
@@ -29,6 +31,7 @@ export function Sidebar() {
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const shouldReduceMotion = useReducedMotion();
+  const { quota } = useExportQuota();
 
   return (
     <motion.aside
@@ -74,7 +77,12 @@ export function Sidebar() {
         >
           <Show when="signed-in">
             <UserButton />
-            {!collapsed && <span className="text-[13px] text-foreground-muted">Account</span>}
+            {!collapsed && (
+              <span className="flex flex-1 items-center gap-1.5 text-[13px] text-foreground-muted">
+                Account
+                <PlanBadge quota={quota} />
+              </span>
+            )}
           </Show>
           <Show when="signed-out">
             <SignInButton mode="modal">
@@ -214,5 +222,27 @@ function NavRow({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
         {item.soon ? " — Coming soon" : ""}
       </TooltipContent>
     </Tooltip>
+  );
+}
+
+function PlanBadge({ quota }: { quota: ExportQuota }) {
+  if (quota.status === "past_due") {
+    return (
+      <span className="rounded-full bg-danger/15 px-1.5 py-0.5 text-[10px] font-medium leading-none text-danger">
+        Payment issue
+      </span>
+    );
+  }
+  if (quota.plan === "pro") {
+    return (
+      <span className="rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium leading-none text-accent">
+        Pro
+      </span>
+    );
+  }
+  return (
+    <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] leading-none text-foreground-subtle">
+      Free
+    </span>
   );
 }

@@ -68,7 +68,7 @@ export const navSections: NavSection[] = [
     label: "System",
     items: [
       { label: "Settings", icon: Settings, href: "/", soon: true },
-      { label: "Account", icon: CircleUser, href: "/", soon: true },
+      { label: "Account", icon: CircleUser, href: "/account" },
     ],
   },
 ];
