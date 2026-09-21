@@ -17,7 +17,10 @@ import { IosFrame } from "@/components/preview/ios-frame";
 import { captureElementViaScreen } from "@/lib/screenshot";
 import { useExportQuota } from "@/components/paywall/export-quota-provider";
 import { formatExportsLeftLabel } from "@/lib/export-quota";
+import { PolarCheckoutLink } from "@/components/landing/polar-checkout-link";
 import { cn } from "@/lib/utils";
+
+const POLAR_PRO_PRODUCT_ID = process.env.NEXT_PUBLIC_POLAR_PRO_PRODUCT_ID;
 
 type LeftTab = "conversation" | "profile" | "display";
 
@@ -178,6 +181,14 @@ export function WorkspaceView({ projectId }: { projectId: string }) {
                 <span className="text-[12px] text-foreground-subtle">
                   {formatExportsLeftLabel(quota)}
                 </span>
+              )}
+              {quota.plan === "free" && quota.locked && POLAR_PRO_PRODUCT_ID && (
+                <PolarCheckoutLink
+                  productId={POLAR_PRO_PRODUCT_ID}
+                  className="flex h-8 items-center rounded-md bg-accent px-2.5 text-[13px] font-medium text-accent-foreground transition-colors hover:bg-accent-hover"
+                >
+                  Upgrade to Pro
+                </PolarCheckoutLink>
               )}
               <button
                 onClick={handleExport}
