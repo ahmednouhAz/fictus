@@ -16,7 +16,7 @@ import { InstagramPreview } from "@/components/preview/instagram/instagram-previ
 import { IosFrame } from "@/components/preview/ios-frame";
 import { captureElementViaScreen } from "@/lib/screenshot";
 import { useExportQuota } from "@/components/paywall/export-quota-provider";
-import { UpgradeDialog } from "@/components/paywall/upgrade-dialog";
+import { formatExportsLeftLabel } from "@/lib/export-quota";
 import { cn } from "@/lib/utils";
 
 type LeftTab = "conversation" | "profile" | "display";
@@ -41,7 +41,6 @@ export function WorkspaceView({ projectId }: { projectId: string }) {
   const [flattenFrame, setFlattenFrame] = React.useState(false);
   const clerk = useClerk();
   const { isSignedIn, quota, consume } = useExportQuota();
-  const [upgradeOpen, setUpgradeOpen] = React.useState(false);
 
   async function handleExport() {
     if (!screenRef.current) return;
@@ -57,13 +56,6 @@ export function WorkspaceView({ projectId }: { projectId: string }) {
       });
       return;
     }
-    // Checked against the already-known client-side quota, not a fresh
-    // server round-trip — avoids prompting the screen-share picker at all
-    // for someone who's already locked out.
-    if (quota.locked) {
-      setUpgradeOpen(true);
-      return;
-    }
     setExporting(true);
     try {
       // Briefly drop the frame's rounded corners/bezel shadow — a screen
@@ -74,7 +66,12 @@ export function WorkspaceView({ projectId }: { projectId: string }) {
       setFlattenFrame(true);
       await new Promise((r) => requestAnimationFrame(r));
       await new Promise((r) => requestAnimationFrame(r));
-      const dataUrl = await captureElementViaScreen(screenRef.current);
+      // Exports are never blocked — past the free limit they're
+      // watermarked instead, per `quota.locked` (already exactly "free
+      // limit exceeded").
+      const dataUrl = await captureElementViaScreen(screenRef.current, {
+        watermark: quota.locked,
+      });
       const link = document.createElement("a");
       link.download = `${project?.name || "conversation"}.png`;
       link.href = dataUrl;
@@ -179,7 +176,7 @@ export function WorkspaceView({ projectId }: { projectId: string }) {
             <>
               {quota.plan === "free" && (
                 <span className="text-[12px] text-foreground-subtle">
-                  {quota.remaining} export{quota.remaining === 1 ? "" : "s"} left
+                  {formatExportsLeftLabel(quota)}
                 </span>
               )}
               <button
@@ -329,13 +326,6 @@ export function WorkspaceView({ projectId }: { projectId: string }) {
           )}
         </section>
       </div>
-
-      <UpgradeDialog
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        title="You've used all 3 free exports"
-        description="Upgrade to Pro for unlimited exports, plus full access to Reels, Stories, and Voice messages."
-      />
     </div>
   );
 }

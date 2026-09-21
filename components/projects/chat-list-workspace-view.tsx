@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { useClerk } from "@clerk/nextjs";
 import { useExportQuota } from "@/components/paywall/export-quota-provider";
+import { formatExportsLeftLabel } from "@/lib/export-quota";
 import { UpgradeDialog } from "@/components/paywall/upgrade-dialog";
 import { IosFrame } from "@/components/preview/ios-frame";
 import { InstagramChatListPreview } from "@/components/preview/instagram/chat-list/instagram-chat-list-preview";
@@ -444,7 +445,9 @@ export function ChatListWorkspaceView({ projectId }: { projectId: string }) {
   const [flattenFrame, setFlattenFrame] = React.useState(false);
   const clerk = useClerk();
   const { isSignedIn, quota, consume } = useExportQuota();
-  const [upgradeReason, setUpgradeReason] = React.useState<"export" | "playButton" | null>(null);
+  // Only trigger left: the play-button toggle (exports are no longer
+  // blocked, just watermarked past the free limit).
+  const [upgradeOpen, setUpgradeOpen] = React.useState(false);
 
   // Clicking an item in the preview both selects it and highlights the
   // matching row in the editor (see SortableRow/the "Your note" block
@@ -486,19 +489,17 @@ export function ChatListWorkspaceView({ projectId }: { projectId: string }) {
       });
       return;
     }
-    // Checked against the already-known client-side quota, not a fresh
-    // server round-trip — avoids prompting the screen-share picker at all
-    // for someone who's already locked out.
-    if (quota.locked) {
-      setUpgradeReason("export");
-      return;
-    }
     setExporting(true);
     try {
       setFlattenFrame(true);
       await new Promise((r) => requestAnimationFrame(r));
       await new Promise((r) => requestAnimationFrame(r));
-      const dataUrl = await captureElementViaScreen(screenRef.current);
+      // Exports are never blocked — past the free limit they're
+      // watermarked instead, per `quota.locked` (already exactly "free
+      // limit exceeded").
+      const dataUrl = await captureElementViaScreen(screenRef.current, {
+        watermark: quota.locked,
+      });
       const link = document.createElement("a");
       link.download = `${project?.name || "chat-list"}.png`;
       link.href = dataUrl;
@@ -636,7 +637,7 @@ export function ChatListWorkspaceView({ projectId }: { projectId: string }) {
         <div className="ml-auto flex items-center gap-1">
           {quota.plan === "free" && (
             <span className="text-[12px] text-foreground-subtle">
-              {quota.remaining} export{quota.remaining === 1 ? "" : "s"} left
+              {formatExportsLeftLabel(quota)}
             </span>
           )}
           <button
@@ -937,7 +938,7 @@ export function ChatListWorkspaceView({ projectId }: { projectId: string }) {
                                     active={(chat.previewKind ?? "text") === option.value}
                                     onClick={() =>
                                       isLocked
-                                        ? setUpgradeReason("playButton")
+                                        ? setUpgradeOpen(true)
                                         : updateChat(chat.id, { previewKind: option.value })
                                     }
                                   >
@@ -1147,18 +1148,10 @@ export function ChatListWorkspaceView({ projectId }: { projectId: string }) {
       </div>
 
       <UpgradeDialog
-        open={upgradeReason !== null}
-        onOpenChange={(open) => !open && setUpgradeReason(null)}
-        title={
-          upgradeReason === "playButton"
-            ? "Play button is a Pro feature"
-            : "You've used all 3 free exports"
-        }
-        description={
-          upgradeReason === "playButton"
-            ? "Upgrade to Pro for unlimited exports, plus full access to the play-button preview and more."
-            : "Upgrade to Pro for unlimited exports, plus full access to Reels, Stories, and Voice messages."
-        }
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        title="Play button is a Pro feature"
+        description="Upgrade to Pro for unlimited watermark-free exports, plus full access to the play-button preview and more."
       />
     </div>
   );

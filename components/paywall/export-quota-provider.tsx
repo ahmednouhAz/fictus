@@ -31,10 +31,11 @@ type ExportQuotaContextValue = {
   quota: ExportQuota;
   loading: boolean;
   isSignedIn: boolean | undefined;
-  // Calls POST /api/export-quota. Returns null if the caller should handle
-  // "not signed in" itself (e.g. open the sign-in modal) rather than the
-  // exports-exhausted upgrade dialog.
-  consume: () => Promise<(ExportQuota & { allowed: boolean }) | null>;
+  // Calls POST /api/export-quota to record an export. Returns null only
+  // if the caller should handle "not signed in" itself (e.g. open the
+  // sign-in modal) — exports are never blocked once signed in, so every
+  // other outcome is a successful record.
+  consume: () => Promise<ExportQuota | null>;
 };
 
 const ExportQuotaContext = React.createContext<ExportQuotaContextValue | null>(null);
@@ -77,8 +78,8 @@ export function ExportQuotaProvider({ children }: { children: React.ReactNode })
         console.error("Failed to record export usage", res.status, await res.text());
         return null;
       }
-      const raw: ExportQuota & { allowed: boolean } = await res.json();
-      const data = { ...parseQuota(raw), allowed: raw.allowed };
+      const raw: ExportQuota = await res.json();
+      const data = parseQuota(raw);
       setServerQuota(data);
       return data;
     } catch (error) {

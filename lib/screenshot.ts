@@ -95,7 +95,45 @@ function waitForViewportSettle(timeoutMs = 1000): Promise<void> {
   });
 }
 
-export async function captureElementViaScreen(el: HTMLElement): Promise<string> {
+// Tiled diagonal repeating wordmark rather than a single corner badge —
+// a corner mark is trivially cropped out and is a much weaker upgrade
+// incentive. Each glyph gets both a dark stroke and a white fill at low
+// alpha so it stays legible whether it lands over a dark or light patch
+// of the screenshot underneath.
+function drawWatermark(ctx: CanvasRenderingContext2D, width: number, height: number) {
+  ctx.save();
+  ctx.font = "bold 32px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "rgba(0, 0, 0, 0.35)";
+  ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+
+  ctx.translate(width / 2, height / 2);
+  ctx.rotate(-Math.PI / 6);
+  ctx.translate(-width / 2, -height / 2);
+
+  const stepX = 220;
+  const stepY = 150;
+  // Bounded by the canvas diagonal rather than width/height directly —
+  // these phone screenshots are tall and narrow, and a rotated tiling
+  // needs to extend well past the shorter axis to still reach that
+  // axis's corners after rotation. Using the diagonal on both loops
+  // guarantees full coverage regardless of aspect ratio.
+  const diagonal = Math.sqrt(width * width + height * height);
+  for (let y = height / 2 - diagonal; y < height / 2 + diagonal; y += stepY) {
+    for (let x = width / 2 - diagonal; x < width / 2 + diagonal; x += stepX) {
+      ctx.strokeText("FICTUS", x, y);
+      ctx.fillText("FICTUS", x, y);
+    }
+  }
+  ctx.restore();
+}
+
+export async function captureElementViaScreen(
+  el: HTMLElement,
+  options?: { watermark?: boolean },
+): Promise<string> {
   const constraints: DisplayMediaStreamOptions & { preferCurrentTab?: boolean } = {
     // `cursor: "never"` keeps the mouse pointer out of the captured frame.
     // In practice Chrome doesn't reliably honor this for preferCurrentTab
@@ -283,6 +321,14 @@ export async function captureElementViaScreen(el: HTMLElement): Promise<string> 
     outputCtx.translate(output.width / 2, output.height / 2);
     outputCtx.rotate(-Math.PI / 2);
     outputCtx.drawImage(captured, -captureWidth / 2, -captureHeight / 2);
+
+    if (options?.watermark) {
+      // Reset the transform first — it's still carrying the rotate+
+      // translate used to draw the portrait-restored image above, and
+      // drawWatermark expects to work in plain output.width/height space.
+      outputCtx.setTransform(1, 0, 0, 1, 0, 0);
+      drawWatermark(outputCtx, output.width, output.height);
+    }
 
     return output.toDataURL("image/png");
   } finally {

@@ -525,7 +525,7 @@ export function InsertItemMenu({
         open={upgradeFeature !== null}
         onOpenChange={(open) => !open && setUpgradeFeature(null)}
         title={`${upgradeFeature ? FEATURE_LABELS[upgradeFeature] : ""} is a Pro feature`}
-        description="Upgrade to Pro for unlimited exports, plus full access to Reels, Stories, and Voice messages."
+        description="Upgrade to Pro for watermark-free exports, plus full access to Reels, Stories, and Voice messages."
       />
     </div>
   );

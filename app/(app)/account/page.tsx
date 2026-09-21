@@ -2,6 +2,7 @@
 
 import { AlertTriangle, CreditCard } from "lucide-react";
 import { useExportQuota } from "@/components/paywall/export-quota-provider";
+import { formatExportsLeftLabel } from "@/lib/export-quota";
 import { PolarCheckoutLink } from "@/components/landing/polar-checkout-link";
 import { Button } from "@/components/ui/button";
 
@@ -71,7 +72,7 @@ export default function AccountPage() {
                   Free
                 </span>
                 <p className="mt-1.5 text-[13px] text-foreground-subtle">
-                  {quota.remaining} export{quota.remaining === 1 ? "" : "s"} left
+                  {formatExportsLeftLabel(quota)}
                 </p>
               </div>
               {POLAR_PRO_PRODUCT_ID && (
