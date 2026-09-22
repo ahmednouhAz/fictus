@@ -28,6 +28,11 @@ export const exportUsage = pgTable("export_usage", {
   id: uuid("id").primaryKey().defaultRandom(),
   clerkUserId: text("clerk_user_id").notNull().unique(),
   exportsUsed: integer("exports_used").notNull().default(0),
+  // Start of the calendar month `exportsUsed` is counting for — once this
+  // falls in a past month, the count is stale and reads as 0 (see
+  // lib/export-quota.ts), giving free users 3 fresh exports every month
+  // instead of a lifetime cap.
+  periodStart: timestamp("period_start", { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

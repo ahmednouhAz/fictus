@@ -33,6 +33,18 @@ export function formatExportsLeftLabel(quota: ExportQuota): string {
   return "Exports are watermarked — upgrade to remove";
 }
 
+// True when `date` falls in the same UTC calendar month as now — mirrors
+// the `to_char(..., 'YYYY-MM')` comparison consumeExport does in SQL, so
+// a row this function treats as "current" is exactly the same row
+// consumeExport would increment rather than reset.
+function isCurrentMonth(date: Date): boolean {
+  const now = new Date();
+  return (
+    date.getUTCFullYear() === now.getUTCFullYear() &&
+    date.getUTCMonth() === now.getUTCMonth()
+  );
+}
+
 // Read-only — used to display "N exports left" and to decide whether
 // Reels/Stories/Voice/the play-button toggle are locked. Never writes.
 export async function getExportQuota(clerkUserId: string): Promise<ExportQuota> {
@@ -47,7 +59,10 @@ export async function getExportQuota(clerkUserId: string): Promise<ExportQuota> 
     .where(eq(exportUsage.clerkUserId, clerkUserId))
     .limit(1);
 
-  const exportsUsed = row?.exportsUsed ?? 0;
+  // A row from a past month reads as 0 used — the actual reset (writing
+  // that back to the table) happens lazily in consumeExport, since this
+  // function never writes.
+  const exportsUsed = row && isCurrentMonth(row.periodStart) ? row.exportsUsed : 0;
   return {
     plan: "free",
     exportsUsed,
@@ -63,19 +78,29 @@ export async function getExportQuota(clerkUserId: string): Promise<ExportQuota> 
 // via the same upsert pattern, unconditionally — exports are never
 // blocked (past the free limit they're watermarked instead, decided by
 // the caller from `locked` before calling this), so there's nothing left
-// to guard against, just a plain atomic +1.
+// to guard against, just a plain atomic +1. The one exception: if the
+// existing row's period is a past month, this is the first export of a
+// new month, so it resets to 1 (and bumps periodStart) instead of
+// incrementing — done as a single CASE expression inside the UPSERT so
+// the read-check-write stays atomic even over neon-http (no
+// transactions available there).
 export async function consumeExport(clerkUserId: string): Promise<ExportQuota> {
   const { plan, status, currentPeriodEnd } = await getUserSubscription(clerkUserId);
   if (plan === "pro") {
     return { plan: "pro", exportsUsed: 0, remaining: null, locked: false, status, currentPeriodEnd };
   }
 
+  const isCurrentPeriod = sql`to_char(${exportUsage.periodStart}, 'YYYY-MM') = to_char(now(), 'YYYY-MM')`;
   const [row] = await db
     .insert(exportUsage)
     .values({ clerkUserId, exportsUsed: 1 })
     .onConflictDoUpdate({
       target: exportUsage.clerkUserId,
-      set: { exportsUsed: sql`${exportUsage.exportsUsed} + 1`, updatedAt: new Date() },
+      set: {
+        exportsUsed: sql`case when ${isCurrentPeriod} then ${exportUsage.exportsUsed} + 1 else 1 end`,
+        periodStart: sql`case when ${isCurrentPeriod} then ${exportUsage.periodStart} else now() end`,
+        updatedAt: new Date(),
+      },
     })
     .returning();
 
