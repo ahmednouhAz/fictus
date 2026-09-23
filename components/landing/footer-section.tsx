@@ -31,6 +31,9 @@ const PRODUCT_LINKS = [
 
 const COMPANY_LINKS = [
   { label: "Contact", href: "/contact" },
+  { label: "Terms", href: "/terms" },
+  { label: "Privacy", href: "/privacy" },
+  { label: "Refunds", href: "/refunds" },
 ];
 
 const SOCIALS = [
