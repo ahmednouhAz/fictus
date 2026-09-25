@@ -42,9 +42,9 @@ export function ProjectListPage({
 
   function handleCreate() {
     const project =
-      kind === "chatList"
-        ? createProject("instagram", undefined, undefined, "chatList")
-        : createProject("instagram");
+      kind === "conversation"
+        ? createProject("instagram")
+        : createProject("instagram", undefined, undefined, kind);
     router.push(`/projects/${project.id}`);
   }
 

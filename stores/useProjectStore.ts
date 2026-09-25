@@ -13,10 +13,12 @@ import type {
 import type { ConversationItem, Meridiem } from "@/schemas/conversation-item";
 import type { SavedRecipient, SavedRecipientFields } from "@/schemas/recipient";
 import type { ChatRowData, MeNoteContent, NoteItemData } from "@/schemas/chat-list";
+import type { FollowRequestRow } from "@/schemas/follow-request";
 import { useRecipientStore } from "@/stores/useRecipientStore";
 
 const DEFAULT_CHAT_LIST_NOTE_COUNT = 4;
 const DEFAULT_CHAT_LIST_CHAT_COUNT = 10;
+const DEFAULT_FOLLOW_REQUEST_COUNT = 8;
 
 function createBlankChatListNote(): NoteItemData {
   return { id: crypto.randomUUID(), username: "", type: "text", content: "" };
@@ -29,6 +31,54 @@ function createBlankChatListChat(index: number): ChatRowData {
     previewText: "4+ new messages",
     time: "3h",
     seen: false,
+  };
+}
+
+// Placeholder mutual-follower avatars for freshly created rows — replaced
+// by whatever the user uploads, same as every other placeholder default in
+// this app (blank chat rows, blank notes, ...).
+const DEFAULT_MUTUAL_AVATARS = [
+  "/profile%20pictures/1.png",
+  "/profile%20pictures/2.png",
+  "/profile%20pictures/3.png",
+];
+
+// Fixed, deliberately mixed variant per default row (0 = plain @username,
+// 1-3 = "mutuals" with that many avatars) — guarantees the default 8-row
+// list always shows every variant (3/2/1 mutuals plus plain-text rows)
+// rather than leaving it to chance, which could easily roll all-one-kind.
+const DEFAULT_ROW_VARIANTS: Array<0 | 1 | 2 | 3> = [3, 0, 2, 0, 1, 3, 0, 2];
+
+// New follow-request lists start pre-filled with a believable mix instead
+// of 8 identical blank rows, cycling through DEFAULT_ROW_VARIANTS above.
+function createBlankFollowRequestRow(index: number): FollowRequestRow {
+  const variant = DEFAULT_ROW_VARIANTS[index % DEFAULT_ROW_VARIANTS.length];
+  if (variant === 0) {
+    return { id: crypto.randomUUID(), displayName: `User ${index + 1}` };
+  }
+  return {
+    id: crypto.randomUUID(),
+    displayName: `User ${index + 1}`,
+    subtitleMode: "mutuals",
+    mutualAvatars: DEFAULT_MUTUAL_AVATARS.slice(0, variant),
+    mutualsText: variant === 1 ? "1 mutual" : `${variant} mutuals`,
+  };
+}
+
+// Upgrades a follow-request row from its pre-redesign shape (`username` as
+// the bold display name, a freeform `subtitle`) to the current one
+// (`displayName` always bold; `username`/`subtitleMode`/`mutualsText`/
+// `mutualAvatars` drive the second line). Rows that already have
+// `displayName` are already current and pass through unchanged.
+function upgradeFollowRequestRow(row: unknown) {
+  const record = row as Record<string, unknown>;
+  if (typeof record.displayName === "string") return row;
+  return {
+    id: record.id,
+    displayName: typeof record.username === "string" ? record.username : "User",
+    avatar: record.avatar,
+    verified: record.verified,
+    recipientId: record.recipientId,
   };
 }
 
@@ -107,6 +157,18 @@ type ProjectState = {
   setChatListMeNote: (id: string, note: MeNoteContent) => void;
   setChatListNotes: (id: string, notes: NoteItemData[]) => void;
   setChatListChats: (id: string, chats: ChatRowData[]) => void;
+  // Notification Overlay generator setters (kind === "notification").
+  setNotificationBackground: (
+    id: string,
+    image: { dataUrl: string; width: number; height: number } | null,
+  ) => void;
+  setNotificationAvatar: (id: string, avatar: string | null) => void;
+  setNotificationContent: (
+    id: string,
+    fields: Partial<{ title: string; body: string }>,
+  ) => void;
+  // Follow Requests generator setter (kind === "followRequests").
+  setFollowRequestRows: (id: string, rows: FollowRequestRow[]) => void;
   // Copies a saved recipient's fields onto this project and links it —
   // further edits to the recipient fields below flow back to that saved
   // record automatically (see the `syncRecipient` calls in each setter).
@@ -174,6 +236,64 @@ export const useProjectStore = create<ProjectState>()(
             chatListChats: Array.from(
               { length: DEFAULT_CHAT_LIST_CHAT_COUNT },
               (_, i) => createBlankChatListChat(i),
+            ),
+            favorite: false,
+            archivedAt: null,
+            createdAt: now,
+            updatedAt: now,
+          };
+          set((state) => ({ projects: [project, ...state.projects] }));
+          return project;
+        }
+
+        if (kind === "notification") {
+          const project: Project = {
+            id: crypto.randomUUID(),
+            name: name?.trim() || "Untitled notification",
+            platform,
+            kind: "notification",
+            theme: "dark",
+            recipientId: null,
+            recipientName: "",
+            items: [],
+            notificationTitle: "username",
+            notificationBody: "sent you a message",
+            favorite: false,
+            archivedAt: null,
+            createdAt: now,
+            updatedAt: now,
+          };
+          set((state) => ({ projects: [project, ...state.projects] }));
+          return project;
+        }
+
+        if (kind === "followRequests") {
+          const project: Project = {
+            id: crypto.randomUUID(),
+            name: name?.trim() || "Untitled follow requests",
+            platform,
+            kind: "followRequests",
+            theme: "dark",
+            recipientId: null,
+            recipientName: "",
+            device: "ios",
+            statusBarVisible: true,
+            statusBarHour: 9,
+            statusBarMinute: 41,
+            statusBarMeridiem: "AM",
+            statusBarShowMeridiem: false,
+            statusBarBattery: 100,
+            statusBarSimCount: 1,
+            statusBarSim1Bars: 4,
+            statusBarSim2Bars: 4,
+            statusBarWifiEnabled: true,
+            statusBarWifiBars: 3,
+            items: [],
+            // Starts pre-filled with 5 blank rows (same idea as the chat
+            // list's default tray) rather than an empty list.
+            followRequestRows: Array.from(
+              { length: DEFAULT_FOLLOW_REQUEST_COUNT },
+              (_, i) => createBlankFollowRequestRow(i),
             ),
             favorite: false,
             archivedAt: null,
@@ -275,6 +395,10 @@ export const useProjectStore = create<ProjectState>()(
           })),
           chatListChats: source.chatListChats?.map((chat) => ({
             ...chat,
+            id: crypto.randomUUID(),
+          })),
+          followRequestRows: source.followRequestRows?.map((row) => ({
+            ...row,
             id: crypto.randomUUID(),
           })),
           favorite: false,
@@ -503,6 +627,57 @@ export const useProjectStore = create<ProjectState>()(
           ),
         })),
 
+      setNotificationBackground: (id, image) =>
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === id
+              ? {
+                  ...p,
+                  notificationBackgroundImage: image?.dataUrl,
+                  notificationBackgroundWidth: image?.width,
+                  notificationBackgroundHeight: image?.height,
+                  updatedAt: new Date().toISOString(),
+                }
+              : p,
+          ),
+        })),
+
+      setNotificationAvatar: (id, avatar) =>
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === id
+              ? {
+                  ...p,
+                  notificationAvatar: avatar ?? undefined,
+                  updatedAt: new Date().toISOString(),
+                }
+              : p,
+          ),
+        })),
+
+      setNotificationContent: (id, fields) =>
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === id
+              ? {
+                  ...p,
+                  notificationTitle: fields.title ?? p.notificationTitle,
+                  notificationBody: fields.body ?? p.notificationBody,
+                  updatedAt: new Date().toISOString(),
+                }
+              : p,
+          ),
+        })),
+
+      setFollowRequestRows: (id, rows) =>
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === id
+              ? { ...p, followRequestRows: rows, updatedAt: new Date().toISOString() }
+              : p,
+          ),
+        })),
+
       applySavedRecipient: (id, recipient) =>
         set((state) => ({
           projects: state.projects.map((p) =>
@@ -585,17 +760,19 @@ export const useProjectStore = create<ProjectState>()(
       // Milestone 7 replaces it with Postgres/Prisma persistence.
       skipHydration: true,
       partialize: (state) => ({ projects: state.projects }),
-      version: 3,
+      version: 4,
       // Handles pre-M3 data (no recipientName/messages), M3 data
-      // (messages: Message[]), and pre-Phase-A-fix divider items
-      // (time: string) by upgrading everything to the current shapes.
+      // (messages: Message[]), pre-Phase-A-fix divider items (time:
+      // string), and pre-redesign follow-request rows (see
+      // upgradeFollowRequestRow) by upgrading everything to the current
+      // shapes.
       migrate: (persisted) => {
         const state = persisted as {
           projects?: (Partial<Project> & { messages?: unknown[] })[];
         };
         return {
           projects: (state.projects ?? []).map((p) => {
-            const { messages, ...rest } = p;
+            const { messages, followRequestRows, ...rest } = p;
             const items =
               rest.items ??
               (Array.isArray(messages)
@@ -605,9 +782,12 @@ export const useProjectStore = create<ProjectState>()(
               recipientName: "Recipient",
               ...rest,
               items: items.map(upgradeDividerFields),
+              followRequestRows: followRequestRows?.map(upgradeFollowRequestRow) as
+                | FollowRequestRow[]
+                | undefined,
             };
           }),
-        };
+        } as { projects: Project[] };
       },
     },
   ),

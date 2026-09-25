@@ -34,11 +34,10 @@ export default function InstagramGeneratorPage() {
         />
         <CategoryCard
           title="Notifications"
-          description="The activity feed — likes, comments, follows, and other notification rows."
+          description="A push notification overlaid on a screenshot, or the Follow Requests list."
           icon={Bell}
           image="/generators/instagram/notifications.png"
-          soon
-          onClick={() => {}}
+          onClick={() => router.push("/generators/instagram/notifications")}
         />
       </div>
     </div>

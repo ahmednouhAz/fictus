@@ -11,6 +11,8 @@ import { MessageList } from "@/components/editor/message-list";
 import { RecipientProfileTab } from "@/components/editor/recipient-profile-tab";
 import { DisplaySettingsTab } from "@/components/editor/display-settings-tab";
 import { ChatListWorkspaceView } from "@/components/projects/chat-list-workspace-view";
+import { NotificationWorkspaceView } from "@/components/projects/notification-workspace-view";
+import { FollowRequestsWorkspaceView } from "@/components/projects/follow-requests-workspace-view";
 import { GenericPreview } from "@/components/preview/generic-preview";
 import { InstagramPreview } from "@/components/preview/instagram/instagram-preview";
 import { IosFrame } from "@/components/preview/ios-frame";
@@ -153,6 +155,14 @@ export function WorkspaceView({ projectId }: { projectId: string }) {
 
   if (project.kind === "chatList") {
     return <ChatListWorkspaceView projectId={projectId} />;
+  }
+
+  if (project.kind === "notification") {
+    return <NotificationWorkspaceView projectId={projectId} />;
+  }
+
+  if (project.kind === "followRequests") {
+    return <FollowRequestsWorkspaceView projectId={projectId} />;
   }
 
   return (

@@ -1,58 +1,8 @@
-import type { ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { InstagramAvatar } from "@/components/preview/instagram/instagram-avatar";
 import { VerifiedBadge } from "@/components/preview/instagram/verified-badge";
+import { HeaderIconButton } from "@/components/preview/instagram/header-glass-button";
 import { cn } from "@/lib/utils";
-
-// Glass-rim border: visible all the way around the circle (like light
-// grazing the raised edge of real glass), but brightest at the top-left and
-// bottom-right — the rest fades down to a dim baseline instead of dropping
-// to full transparency, so there's no dead/invisible arc. Plain translucent
-// white, tuned separately per theme: the dark-theme opacities read fine
-// against that near-black button fill, but the same low opacities are
-// nearly invisible against the light theme's near-white fill, so light
-// theme gets its own brighter stops instead of just blending away.
-const GLASS_RING_BACKGROUND_DARK =
-  "conic-gradient(from 0deg, rgba(255,255,255,0.13) 0deg, rgba(255,255,255,0.05) 45deg, rgba(255,255,255,0.22) 135deg, rgba(255,255,255,0.05) 225deg, rgba(255,255,255,0.22) 315deg, rgba(255,255,255,0.13) 360deg)";
-const GLASS_RING_BACKGROUND_LIGHT =
-  "conic-gradient(from 0deg, rgba(255,255,255,0.55) 0deg, rgba(255,255,255,0.25) 45deg, rgba(255,255,255,0.9) 135deg, rgba(255,255,255,0.25) 225deg, rgba(255,255,255,0.9) 315deg, rgba(255,255,255,0.55) 360deg)";
-const GLASS_RING_MASK =
-  "radial-gradient(circle closest-side, transparent calc(100% - 1.25px), black calc(100% - 1.25px))";
-
-function HeaderIconButton({
-  ariaLabel,
-  isLight,
-  lightBg = "#FEFEFE",
-  children,
-}: {
-  ariaLabel: string;
-  isLight?: boolean;
-  lightBg?: string;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={ariaLabel}
-      className={cn(
-        "isolate relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full backdrop-blur-[36px]",
-        !isLight && "bg-[#141517]/40",
-      )}
-      style={isLight ? { backgroundColor: `${lightBg}66` } : undefined}
-    >
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-0 rounded-full"
-        style={{
-          background: isLight ? GLASS_RING_BACKGROUND_LIGHT : GLASS_RING_BACKGROUND_DARK,
-          WebkitMaskImage: GLASS_RING_MASK,
-          maskImage: GLASS_RING_MASK,
-        }}
-      />
-      {children}
-    </button>
-  );
-}
 
 export function InstagramHeader({
   recipientName,

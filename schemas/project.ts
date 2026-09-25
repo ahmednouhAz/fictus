@@ -1,13 +1,19 @@
 import { z } from "zod";
 import { conversationItemSchema, meridiemSchema } from "@/schemas/conversation-item";
 import { noteItemSchema, meNoteContentSchema, chatRowSchema } from "@/schemas/chat-list";
+import { followRequestRowSchema } from "@/schemas/follow-request";
 
 export const platformSchema = z.enum(["instagram"]);
 // Which generator this project belongs to. Absent/undefined means
 // "conversation" — every project created before this field existed is a
 // conversation, so that's the implicit default rather than requiring a
 // migration to backfill it.
-export const projectKindSchema = z.enum(["conversation", "chatList"]);
+export const projectKindSchema = z.enum([
+  "conversation",
+  "chatList",
+  "notification",
+  "followRequests",
+]);
 export const conversationKindSchema = z.enum(["normal", "messageRequest"]);
 export const conversationThemeSchema = z.enum(["dark", "light"]);
 export const deviceSchema = z.enum(["ios", "android", "desktop"]);
@@ -79,6 +85,19 @@ export const projectSchema = z.object({
   chatListMeNote: meNoteContentSchema.optional(),
   chatListNotes: z.array(noteItemSchema).optional(),
   chatListChats: z.array(chatRowSchema).optional(),
+  // Notification Overlay generator fields (kind === "notification") — the
+  // user's uploaded screenshot plus the banner composited on top of it.
+  // Light/dark banner styling reuses `theme` above rather than a new field.
+  notificationBackgroundImage: z.string().optional(),
+  notificationBackgroundWidth: z.number().int().positive().optional(),
+  notificationBackgroundHeight: z.number().int().positive().optional(),
+  // The banner's own profile picture — separate from the background
+  // screenshot above.
+  notificationAvatar: z.string().optional(),
+  notificationTitle: z.string().optional(),
+  notificationBody: z.string().optional(),
+  // Follow Requests generator fields (kind === "followRequests").
+  followRequestRows: z.array(followRequestRowSchema).optional(),
   favorite: z.boolean(),
   archivedAt: z.string().nullable(),
   createdAt: z.string(),

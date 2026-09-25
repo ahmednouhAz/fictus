@@ -7,28 +7,50 @@ const SEARCH_WIDTH = 403; // 1209 / 3
 const SEARCH_HEIGHT = 44.67; // 134 / 3
 const SEARCH_PADDING_LEFT = 14; // 42 / 3
 
-export function InboxSearchBar({ theme }: { theme?: "dark" | "light" }) {
+export function InboxSearchBar({
+  theme,
+  placeholder = "Search or ask Meta AI",
+  height = SEARCH_HEIGHT,
+  darkBg = "#262627",
+  darkPlaceholderColor,
+  fontSize = 13,
+}: {
+  theme?: "dark" | "light";
+  placeholder?: string;
+  // Overrides below only ever apply in dark mode — callers that need a
+  // specific look (see the Follow Requests preview) have only specified
+  // one, and light mode's own defaults are unrelated to those values.
+  height?: number;
+  darkBg?: string;
+  darkPlaceholderColor?: string;
+  fontSize?: number;
+}) {
   const isLight = theme === "light";
   return (
     <div className="flex justify-center px-3">
       <div
-        className={cn(
-          "flex items-center gap-2 rounded-full",
-          isLight ? "bg-[#F0F1F3]" : "bg-[#262627]",
-        )}
+        className={cn("flex items-center gap-2 rounded-full", isLight && "bg-[#F0F1F3]")}
         style={{
           width: SEARCH_WIDTH,
-          height: SEARCH_HEIGHT,
+          height,
           maxWidth: "100%",
           paddingLeft: SEARCH_PADDING_LEFT,
           paddingRight: SEARCH_PADDING_LEFT,
+          backgroundColor: isLight ? undefined : darkBg,
         }}
       >
-        <Search className={cn("h-4 w-4 shrink-0", isLight ? "text-black/40" : "text-white/40")} />
+        <Search
+          className={cn("h-4 w-4 shrink-0", isLight && "text-black/40")}
+          style={!isLight ? { color: darkPlaceholderColor ?? "rgba(255,255,255,0.4)" } : undefined}
+        />
         <span
-          className={cn("truncate text-[13px]", isLight ? "text-black/40" : "text-white/40")}
+          className={cn("truncate", isLight && "text-black/40")}
+          style={{
+            fontSize,
+            color: !isLight ? (darkPlaceholderColor ?? "rgba(255,255,255,0.4)") : undefined,
+          }}
         >
-          Search or ask Meta AI
+          {placeholder}
         </span>
       </div>
     </div>

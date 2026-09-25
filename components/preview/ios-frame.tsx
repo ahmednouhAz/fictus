@@ -18,6 +18,7 @@ export function IosFrame({
   children,
   screenRef,
   flattened,
+  dynamicIsland = true,
 }: {
   children: React.ReactNode;
   // Ref to the screen surface only (content + Dynamic Island, no bezel/
@@ -30,6 +31,16 @@ export function IosFrame({
   // rounded shape, so during the brief export instant there's simply no
   // rounding for that mismatch to happen with. Restored right after.
   flattened?: boolean;
+  // False skips only the Dynamic Island pill — for generators (like
+  // Notification Overlay) whose `children` is a real uploaded screenshot
+  // that already has a real notch baked into its pixels, where drawing a
+  // second synthetic one on top would double up. The black bezel
+  // shadow/border stays either way: it's a box-shadow drawn outside the
+  // screen's own bounds (see the `shadow-[...]` below), so it never
+  // overlaps `children` — it's what actually reads as "this is a phone"
+  // rather than a bare rectangle, so removing it made the frame invisible
+  // instead of avoiding any real duplication.
+  dynamicIsland?: boolean;
 }) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [scale, setScale] = React.useState(1);
@@ -87,10 +98,12 @@ export function IosFrame({
           >
             <div className="absolute inset-0 flex flex-col">{children}</div>
 
-            <div
-              className="pointer-events-none absolute left-1/2 top-[11px] z-20 -translate-x-1/2 rounded-full bg-black"
-              style={{ width: 126, height: 37 }}
-            />
+            {dynamicIsland && (
+              <div
+                className="pointer-events-none absolute left-1/2 top-[11px] z-20 -translate-x-1/2 rounded-full bg-black"
+                style={{ width: 126, height: 37 }}
+              />
+            )}
           </div>
         </div>
       </div>
